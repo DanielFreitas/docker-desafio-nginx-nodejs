@@ -23,7 +23,7 @@ app.get('/hello', function (req, res) {
   res.send('Hello World!');
 });
 
-app.get("/people", function (req, res) {
+app.get("/", function (req, res) {
   const randomName = String(uniqueNamesGenerator({ dictionaries: [starWars] }));
   const values = [[randomName]];
 
