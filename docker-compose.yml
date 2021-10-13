@@ -1,36 +1,52 @@
 version: '3.8'
 
 services:
-  node:    
+  nodejs:
     build:
       context: ./app
       dockerfile: Dockerfile
-    image: node:10.14
+    image: node:15
+    entrypoint: dockerize -wait tcp://mysql_server:3306 -timeout 20s docker-entrypoint.sh
     restart: unless-stopped
+    container_name: nodejs
     volumes:
       - ./app:/home/node/app
+      - '/home/node/app/node_modules'
+    tty: true
     ports:
       - '3000'
     networks:
       - nginx_network
       - node-mysql-network
     command: 'npm start'
+    depends_on:
+      - mysql_server
   nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
     image: nginx:latest
+    command: 'bash -c "cat /etc/nginx/conf.d/node.template > /etc/nginx/conf.d/default.conf && nginx -g ''daemon off;''"'
+    entrypoint: dockerize -wait tcp://nodejs:3000 -timeout 20s /docker-entrypoint.sh
     restart: unless-stopped
+    container_name: nginx
     volumes:
       - ./nginx/node.conf:/etc/nginx/conf.d/node.template
+    tty: true
     ports:
       - '8080:80'
-    command: 'bash -c "cat /etc/nginx/conf.d/node.template > /etc/nginx/conf.d/default.conf && nginx -g ''daemon off;''"'
     networks:
       - nginx_network
+    depends_on:
+      - nodejs
   mysql_server:
     image: mysql:8.0
     restart: unless-stopped
     command: --init-file /data/application/init.sql
+    container_name: mysql_server
     volumes:
-      - ./database/init.sql:/data/application/init.sql    
+      - ./database/init.sql:/data/application/init.sql
+    tty: true
     ports:
       - '3308:3306'
     environment:
